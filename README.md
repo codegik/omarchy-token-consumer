@@ -75,8 +75,3 @@ omarchy restart waybar
 ```
 
 Force an immediate refresh anytime with `pkill -RTMIN+11 waybar`.
-
-## Credits
-
-Inspired by the macOS WidgetKit widget
-[`vfurinii/xcode-playground/token.consumer`](https://github.com/vfurinii/xcode-playground/tree/main/token.consumer).
