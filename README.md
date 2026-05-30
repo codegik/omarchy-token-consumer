@@ -19,8 +19,11 @@ them without noticing. This module puts a small indicator in your Waybar so you
 always know where you stand:
 
 ```
-󰚩 5%
+🤖 5%
 ```
+
+> The real module uses a Nerd Font robot glyph (`󰚩`) rather than the emoji
+> above — it renders correctly in Waybar with any Nerd Font installed.
 
 Hover it for the full breakdown — **session (5h)**, **weekly**, **Opus**, and
 **Sonnet** — each with its reset time. The number turns **yellow at 80%** and
