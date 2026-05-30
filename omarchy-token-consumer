@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""Waybar module: Claude Code rate-limit usage from /api/oauth/usage.
+
+Calls the same endpoint Claude Code's `/usage` command uses. Reads the OAuth
+token from ~/.claude/.credentials.json. Stdlib only.
+"""
+import json, os, sys, urllib.request, urllib.error
+from datetime import datetime, timezone
+
+ICON = "󰚩"  # nerd-font robot glyph; set to "" for none
+CREDS = os.path.expanduser("~/.claude/.credentials.json")
+URL = "https://api.anthropic.com/api/oauth/usage"
+TIMEOUT = 5
+
+LABELS = {
+    "five_hour":        "Session (5h)",
+    "seven_day":        "Weekly",
+    "seven_day_opus":   "Opus weekly",
+    "seven_day_sonnet": "Sonnet weekly",
+}
+
+
+def emit(text, tooltip, classes=(), percentage=None):
+    out = {"text": text, "tooltip": tooltip, "class": list(classes)}
+    if percentage is not None:
+        out["percentage"] = percentage
+    print(json.dumps(out))
+
+
+def load_token():
+    with open(CREDS, encoding="utf-8") as fh:
+        oauth = (json.load(fh) or {}).get("claudeAiOauth") or {}
+    token = oauth.get("accessToken")
+    if not token:
+        return None, "no access token in credentials"
+    expires_at_ms = oauth.get("expiresAt") or 0
+    if expires_at_ms and expires_at_ms / 1000 < datetime.now(timezone.utc).timestamp():
+        return None, "token expired — run `claude` to refresh"
+    return token, None
+
+
+def fetch_usage(token):
+    req = urllib.request.Request(URL, headers={
+        "Authorization": f"Bearer {token}",
+        "Content-Type":  "application/json",
+    })
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        return json.load(resp)
+
+
+def fmt_reset(iso):
+    if not iso:
+        return ""
+    try:
+        when = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return ""
+    delta = (when - datetime.now(timezone.utc)).total_seconds()
+    if delta <= 0:           return "now"
+    if delta < 3600:         return f"in {int(delta // 60)}m"
+    if delta < 86400:        return f"in {delta / 3600:.1f}h"
+    return f"in {delta / 86400:.1f}d"
+
+
+def fail(short, tooltip, cls="warning"):
+    text = f"{ICON} {short}" if ICON else short
+    emit(text, tooltip, [cls])
+    sys.exit(0)
+
+
+def main():
+    try:
+        token, err = load_token()
+    except FileNotFoundError:
+        fail("no auth", f"Credentials file missing: {CREDS}", "critical")
+    if err:
+        fail("?", err)
+
+    try:
+        data = fetch_usage(token)
+    except urllib.error.HTTPError as e:
+        fail("?", f"HTTP {e.code}: {e.reason}")
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        fail("?", f"Network error: {e}")
+
+    rows = []
+    max_pct = 0.0
+    for key, label in LABELS.items():
+        entry = data.get(key)
+        if not entry or entry.get("utilization") is None:
+            continue
+        pct = entry["utilization"]
+        max_pct = max(max_pct, pct)
+        rows.append((label, pct, entry.get("resets_at")))
+
+    if not rows:
+        emit(f"{ICON} 0%" if ICON else "0%", "No usage reported", [])
+        return
+
+    pct_int = round(max_pct)
+    text = f"{ICON} {pct_int}%" if ICON else f"{pct_int}%"
+    classes = ["critical"] if max_pct >= 100 else ["warning"] if max_pct >= 80 else []
+
+    lines = ["Claude Code usage"]
+    for label, pct, reset in rows:
+        suffix = f"  (resets {fmt_reset(reset)})" if reset else ""
+        lines.append(f"  {label}: {pct:.0f}%{suffix}")
+
+    emit(text, "\n".join(lines), classes, percentage=min(pct_int, 100))
+
+
+if __name__ == "__main__":
+    main()
