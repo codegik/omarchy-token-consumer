@@ -1,40 +1,53 @@
-# omarchy-token-consumer
+<p align="center">
+  <img src="icon.png" alt="omarchy-token-consumer" width="128">
+</p>
 
-A [Waybar](https://github.com/Alexays/Waybar) module for [Omarchy](https://omarchy.org/)
-showing your **current Claude Code rate-limit usage** as a percentage:
+<h1 align="center">omarchy-token-consumer</h1>
+
+<p align="center">
+  A <a href="https://github.com/Alexays/Waybar">Waybar</a> module for
+  <a href="https://omarchy.org/">Omarchy</a> that shows your live
+  <strong>Claude Code rate-limit usage</strong> right in your status bar.
+</p>
+
+---
+
+## What it's for
+
+If you use Claude Code, you have rate limits — and it's easy to burn through
+them without noticing. This module puts a small indicator in your Waybar so you
+always know where you stand:
 
 ```
 󰚩 5%
 ```
 
-Hover for the full breakdown (session, weekly, Opus, Sonnet) with reset times.
+Hover it for the full breakdown — **session (5h)**, **weekly**, **Opus**, and
+**Sonnet** — each with its reset time. The number turns **yellow at 80%** and
+**red at 100%**, so a glance is enough.
+
+Under the hood it calls the exact same endpoint Claude Code's own `/usage`
+command uses (`GET https://api.anthropic.com/api/oauth/usage`) and reuses the
+OAuth token already on disk at `~/.claude/.credentials.json`. That means **no
+API keys, no config files, and no log scraping** — it's a single dependency-free
+Python script (stdlib only).
 
 ## Demo
 
-<!--
-  GitHub only renders a playable video for files served from its attachment CDN.
-  To get the URL: edit this README on github.com (or open a new issue/PR comment),
-  drag recording-20260529-233747.mp4 into the text box, and GitHub inserts a
-  https://github.com/user-attachments/assets/... URL. Paste it below, replacing
-  REPLACE_WITH_UPLOADED_URL. The bare URL form on its own line also works.
--->
-https://github.com/user-attachments/assets/REPLACE_WITH_UPLOADED_URL
-
-It calls the same endpoint Claude Code's own `/usage` command uses
-(`GET https://api.anthropic.com/api/oauth/usage`) and authenticates with the
-OAuth token already on disk at `~/.claude/.credentials.json` — no extra setup,
-no pricing tables, no log scraping.
+<video src="https://github.com/codegik/omarchy-token-consumer/raw/main/recording-20260529-233747.mp4" controls width="640"></video>
 
 ## Install
 
-It's a single stdlib Python script — drop it on your `PATH`:
+It's a single Python script — drop it on your `PATH`:
 
 ```bash
+git clone https://github.com/codegik/omarchy-token-consumer.git
+cd omarchy-token-consumer
 install -m 0755 omarchy-token-consumer ~/.local/bin/
 ```
 
-Add `"custom/tokens"` to a `modules-*` array in `~/.config/waybar/config.jsonc`,
-then add this module:
+Then add the module to Waybar. In `~/.config/waybar/config.jsonc`, add
+`"custom/tokens"` to one of your `modules-*` arrays, and define it:
 
 ```jsonc
 "custom/tokens": {
@@ -47,31 +60,23 @@ then add this module:
 }
 ```
 
-Append to `~/.config/waybar/style.css` (optional color coding):
+Optionally, add color coding to `~/.config/waybar/style.css`:
 
 ```css
 #custom-tokens { margin: 0 7.5px; }
 #custom-tokens.warning  { color: #d4a72c; }  /* >= 80% on any limit */
-#custom-tokens.critical { color: #a55555; }  /* >= 100% on any limit, or no auth */
+#custom-tokens.critical { color: #a55555; }  /* >= 100%, or no auth  */
 ```
 
-Apply with `omarchy restart waybar`. Force a refresh anytime: `pkill -RTMIN+11 waybar`.
+Apply it:
 
-## How it works
+```bash
+omarchy restart waybar
+```
 
-On each run the script:
+Force an immediate refresh anytime with `pkill -RTMIN+11 waybar`.
 
-1. Reads the OAuth access token from `~/.claude/.credentials.json`
-   (key path: `claudeAiOauth.accessToken`).
-2. If `expiresAt` is in the past, displays `?` and asks you to run `claude` to
-   refresh — token refresh is delegated to Claude Code itself.
-3. Otherwise calls `GET https://api.anthropic.com/api/oauth/usage` with
-   `Authorization: Bearer <token>` (5s timeout).
-4. The response contains `five_hour`, `seven_day`, `seven_day_opus`, and
-   `seven_day_sonnet` entries, each with `utilization` (percent, 0–100) and
-   `resets_at` (ISO 8601). The headline number is the highest of the four.
-
-No CLI args, no config file, no network keys to manage.
+## Credits
 
 Inspired by the macOS WidgetKit widget
 [`vfurinii/xcode-playground/token.consumer`](https://github.com/vfurinii/xcode-playground/tree/main/token.consumer).
