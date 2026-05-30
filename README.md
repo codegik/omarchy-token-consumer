@@ -34,7 +34,8 @@ Python script (stdlib only).
 
 ## Demo
 
-<video src="https://github.com/codegik/omarchy-token-consumer/raw/main/recording-20260529-233747.mp4" controls width="640"></video>
+https://github.com/user-attachments/assets/153142e9-b6bb-4d76-b00f-67a453b13668
+
 
 ## Install
 
